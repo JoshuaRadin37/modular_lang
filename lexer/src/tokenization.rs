@@ -16,28 +16,23 @@ pub enum TokenType {
     Structural(Structural),
     Operator(Operator),
     CompoundAssignment(Operator),
-    EOF
+    EOF,
 }
 
 pub struct Token {
     token_type: TokenType,
     filename: String,
     line_number: usize,
-    column: usize
+    column: usize,
 }
 
 impl Token {
-
-
-    pub fn new(token_type: TokenType,
-               filename: String,
-               line_number: usize,
-               column: usize) -> Self {
+    pub fn new(token_type: TokenType, filename: String, line_number: usize, column: usize) -> Self {
         Self {
             token_type,
             filename,
             line_number,
-            column
+            column,
         }
     }
 
@@ -59,10 +54,8 @@ impl HasTokenType for Token {
 impl HasTokenType for Option<Token> {
     fn token_type(&self) -> Option<&TokenType> {
         match self {
-            None => { None },
-            Some(tok) => {
-                tok.token_type()
-            },
+            None => None,
+            Some(tok) => tok.token_type(),
         }
     }
 }

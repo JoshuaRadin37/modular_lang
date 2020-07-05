@@ -1,10 +1,10 @@
 use crate::types::Type;
 
-trait Primitive : PartialEq {
+trait Primitive: PartialEq {
     fn size(&self) -> usize;
 }
 
-impl <R : Primitive> Type for R {
+impl<R: Primitive> Type for R {
     fn get_size(&self) -> usize {
         self.size()
     }
@@ -22,7 +22,7 @@ impl <R : Primitive> Type for R {
     }
 
     fn is_invariant<T: Type>(&self, other: &T) -> bool {
-        self == other
+        unimplemented!()
     }
 
     fn is_covariant<T: Type>(&self, other: &T) -> bool {
@@ -37,7 +37,6 @@ impl <R : Primitive> Type for R {
         unimplemented!()
     }
 }
-
 
 #[derive(PartialEq)]
 struct Char;

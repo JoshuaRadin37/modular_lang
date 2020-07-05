@@ -1,12 +1,4 @@
-
-
 pub mod types;
-
-
-pub enum TypeKind {
-    Primitive(PrimitiveKind)
-}
-
 
 #[cfg(test)]
 mod tests {

@@ -1,13 +1,11 @@
-
 #[derive(Debug, PartialEq)]
 pub enum Literal {
     Character(char),
     Boolean(bool),
     Integer(usize),
     Float(f64),
-    String(String)
+    String(String),
 }
-
 
 #[derive(Debug, PartialEq)]
 pub enum Control {
@@ -17,21 +15,21 @@ pub enum Control {
     Return,
     Try,
     Catch,
-    Case
+    Case,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Loop {
     While,
     For,
-    Do
+    Do,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Security {
     Private,
     Public,
-    Internal
+    Internal,
 }
 
 #[derive(Debug, PartialEq)]
@@ -43,7 +41,7 @@ pub enum Primitive {
     I64,
     Imax,
     F64,
-    F32
+    F32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,14 +49,14 @@ pub enum Compound {
     Struct,
     Call,
     Trait,
-    Enum
+    Enum,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Declare {
     Fn,
     Val,
-    Var
+    Var,
 }
 
 #[derive(Debug, PartialEq)]
@@ -67,7 +65,7 @@ pub enum ObjectOrientation {
     Super,
     Abstract,
     Is,
-    As
+    As,
 }
 
 /// Used for structure
@@ -78,7 +76,7 @@ pub enum Structural {
     /// {
     LCurl,
     /// }
-    RCurl
+    RCurl,
 }
 
 #[derive(Debug, PartialEq)]
@@ -146,5 +144,5 @@ pub enum Operator {
     /// [
     LBracket,
     /// ]
-    RBracket
+    RBracket,
 }
