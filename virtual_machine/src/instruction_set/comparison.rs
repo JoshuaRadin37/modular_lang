@@ -31,8 +31,6 @@ impl PartialOrd for Immediate {
     }
 }
 
-
-
 impl PartialEq for Signed {
     fn eq(&self, other: &Self) -> bool {
         let Signed(this) = self;
@@ -76,57 +74,113 @@ impl ComparisonOperation {
         val1: Immediate,
         val2: Immediate,
     ) -> Result<Immediate, Fault> {
-        match self {
+        let ret = match self {
             ComparisonOperation::And => {
                 let compare = !(val1.is_zero() || val2.is_zero());
-                if compare {
-                    flags.zero = true;
-                    flags.sign = true;
-                    flags.parity = true;
-                }
                 Ok(compare.into())
             }
             ComparisonOperation::Or => {
                 let compare = !(val1.is_zero() && val2.is_zero());
-                if compare {
-                    flags.zero = true;
-                    flags.sign = true;
-                    flags.parity = true;
-                }
                 Ok(compare.into())
             }
             ComparisonOperation::LessThan => {
                 let val1 = Signed(val1);
                 let val2 = Signed(val2);
                 let compare = val1.partial_cmp(&val2);
-                match compare {
-                    None => {
-                        Ok(false.into())
-                    },
-                    Some(order) => {
-                        match order {
-                            Ordering::Less => {
-
-                                Ok(true.into())
-                            },
-                            Ordering::Equal => {
-                                Ok(false.into())
-                            },
-                            Ordering::Greater => {
-                                Ok(false.into())
-                            },
-                        }
-                    },
-                }
+                Ok((if let Some(Ordering::Less) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
             }
-            ComparisonOperation::GreaterThan => {}
-            ComparisonOperation::LessThanEqual => {}
-            ComparisonOperation::GreaterThanEqual => {}
-            ComparisonOperation::Above => {}
-            ComparisonOperation::AboveEqual => {}
-            ComparisonOperation::Below => {}
-            ComparisonOperation::BelowEqual => {}
-            ComparisonOperation::Compare => {}
+            ComparisonOperation::GreaterThan => {
+                let val1 = Signed(val1);
+                let val2 = Signed(val2);
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Greater) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::LessThanEqual => {
+                let val1 = Signed(val1);
+                let val2 = Signed(val2);
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Less) = compare {
+                    true
+                } else if let Some(Ordering::Equal) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::GreaterThanEqual => {
+                let val1 = Signed(val1);
+                let val2 = Signed(val2);
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Greater) = compare {
+                    true
+                } else if let Some(Ordering::Equal) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::Above => {
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Greater) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::AboveEqual => {
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Greater) = compare {
+                    true
+                } else if let Some(Ordering::Equal) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::Below => {
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Less) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::BelowEqual => {
+                let compare = val1.partial_cmp(&val2);
+                Ok((if let Some(Ordering::Less) = compare {
+                    true
+                } else if let Some(Ordering::Equal) = compare {
+                    true
+                } else {
+                    false
+                })
+                .into())
+            }
+            ComparisonOperation::Compare => {
+                let sub: Immediate = (val1 - val2).0?.0;
+                Ok(sub)
+            }
+        };
+        if let Ok(imm) = ret {
+            flags.zero = imm.is_zero();
+            flags.sign = !imm.msb();
+            flags.parity = imm.set_bits() % 2 == 0;
         }
+        ret
     }
 }

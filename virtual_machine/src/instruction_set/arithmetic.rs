@@ -1,7 +1,6 @@
 use super::*;
 
-struct OverflowingResult(Result<(Immediate, bool), Fault>);
-
+pub struct OverflowingResult(pub Result<(Immediate, bool), Fault>);
 
 impl From<(u8, bool)> for OverflowingResult {
     fn from(t: (u8, bool)) -> Self {
@@ -41,7 +40,7 @@ impl Add<Immediate> for Immediate {
             (Pointer(v1), Pointer(v2)) => {
                 let x = v1.overflowing_add(v2);
                 OverflowingResult(Ok((Pointer(x.0), x.1)))
-            },
+            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -61,7 +60,7 @@ impl Sub<Immediate> for Immediate {
             (Pointer(v1), Pointer(v2)) => {
                 let x = v1.overflowing_sub(v2);
                 OverflowingResult(Ok((Pointer(x.0), x.1)))
-            },
+            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -81,7 +80,7 @@ impl Mul<Immediate> for Immediate {
             (Pointer(v1), Pointer(v2)) => {
                 let x = v1.overflowing_mul(v2);
                 OverflowingResult(Ok((Pointer(x.0), x.1)))
-            },
+            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -101,7 +100,7 @@ impl Div<Immediate> for Immediate {
             (Pointer(v1), Pointer(v2)) => {
                 let x = v1.overflowing_div(v2);
                 OverflowingResult(Ok((Pointer(x.0), x.1)))
-            },
+            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -121,7 +120,7 @@ impl Rem<Immediate> for Immediate {
             (Pointer(v1), Pointer(v2)) => {
                 let x = v1.overflowing_rem(v2);
                 OverflowingResult(Ok((Pointer(x.0), x.1)))
-            },
+            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -173,56 +172,68 @@ impl BitXor<Immediate> for Immediate {
 }
 
 impl Operation {
-    pub fn perform_op(&self, flags: &mut Flags, val1: Immediate, val2: Immediate) -> Result<Immediate, Fault> {
+    pub fn perform_op(
+        &self,
+        flags: &mut Flags,
+        val1: Immediate,
+        val2: Immediate,
+    ) -> Result<Immediate, Fault> {
+        use Ordering::*;
         let ret = match self {
             Operation::Add => {
                 let (ret, overflow): (Immediate, bool) = (val1 + val2).0?;
                 flags.carry = overflow;
                 flags.overflow =
-                    match
+                    match (val1.zero_compare(), val2.zero_compare(), ret.zero_compare()) {
+                        (Some(Greater), Some(Greater), Some(Less))
+                        | (Some(Greater), Some(Greater), Some(Equal)) => true,
+                        (Some(Less), Some(Less), Some(Greater))
+                        | (Some(Less), Some(Less), Some(Equal)) => true,
+                        _ => false,
+                    };
                 flags.sign = !ret.msb();
 
                 ret
-            },
+            }
             Operation::Subtract => {
                 let (ret, overflow): (Immediate, bool) = (val1 - val2).0?;
                 flags.carry = overflow;
                 flags.sign = !ret.msb();
                 ret
-            },
-            Operation::Multiply =>{
+            }
+            Operation::Multiply => {
                 let (ret, overflow): (Immediate, bool) = (val1 * val2).0?;
                 flags.carry = overflow;
                 flags.sign = !ret.msb();
                 ret
-            },
+            }
             Operation::Divide => {
                 let (ret, overflow): (Immediate, bool) = (val1 / val2).0?;
                 flags.carry = overflow;
                 flags.sign = !ret.msb();
                 ret
-            },
+            }
             Operation::Remainder => {
                 let (ret, overflow): (Immediate, bool) = (val1 % val2).0?;
                 flags.carry = overflow;
                 flags.sign = !ret.msb();
                 ret
-            },
+            }
             Operation::And => {
                 let ret: Immediate = (val1 & val2)?;
 
                 ret
-            },
+            }
             Operation::Or => {
                 let ret: Immediate = (val1 | val2)?;
 
                 ret
-            },
+            }
             Operation::Xor => {
                 let ret: Immediate = (val1 ^ val2)?;
 
                 ret
-            },
+            }
         };
         flags.zero = ret.is_zero();
         Ok(ret)

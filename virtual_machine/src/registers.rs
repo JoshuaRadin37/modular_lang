@@ -7,6 +7,7 @@ pub struct Registers {
     pub callee: [Option<Immediate>; REGISTER_COUNT],
     pub start_stack_pointer: usize,
     pub stack_pointer: usize,
+    pub frame_pointer: usize,
 }
 
 impl Registers {
@@ -16,6 +17,7 @@ impl Registers {
             callee: [None; 8],
             start_stack_pointer: 0,
             stack_pointer: 0,
+            frame_pointer: 0,
         }
     }
 }
