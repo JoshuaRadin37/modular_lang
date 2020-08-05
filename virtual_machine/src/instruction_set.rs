@@ -1,13 +1,13 @@
 use crate::flags::Flags;
 use crate::instruction_set::Immediate::*;
-use crate::instruction_set::Offset::Advanced;
 use crate::vm::{Fault, VirtualMachine, POINTER_SIZE};
 use byteorder::{BigEndian, ByteOrder};
 use std::cmp::Ordering;
-use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub, Deref};
 
 mod immediate;
 pub use immediate::*;
+use std::string::String;
 
 pub mod arithmetic;
 
@@ -75,18 +75,10 @@ pub enum RegisterType {
     Callee,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum Offset {
-    Basic(isize),
-    Advanced {
-        steps: MemoryLocationInner,
-        offset: MemoryLocationInner,
-    },
-}
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Literal {
-    Location(MemoryLocationInner, Option<Offset>),
+    Variable(String),
     Register(RegisterType, u8),
     Immediate(Immediate),
 }
@@ -100,212 +92,199 @@ impl Literal {
         Literal::Immediate(imm)
     }
 
-    pub fn location(loc: MemoryLocationInner) -> Literal {
-        Literal::Location(loc, None)
+    pub fn variable<'a, S : Deref<Target=&'a str>>(loc: S) -> Literal {
+        Literal::Variable(loc.to_string())
     }
 
-    pub fn location_offset(loc: MemoryLocationInner, offset: isize) -> Literal {
-        Literal::Location(loc, Some(Offset::Basic(offset)))
+    pub fn get_immediate(&self, virtual_machine: &VirtualMachine) -> Result<Immediate, Fault> {
+        match self {
+            Literal::Variable(name) => {
+                virtual_machine.memory.get_variable(name)
+            },
+            Literal::Register(reg, num) => {
+                match reg {
+                    RegisterType::Caller => {
+                        match &virtual_machine.registers.caller[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val.clone())
+                            },
+                        }
+                    },
+                    RegisterType::Callee => {
+                        match &virtual_machine.registers.callee[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val.clone())
+                            },
+                        }
+                    },
+                }
+            },
+            Literal::Immediate(im) => Ok(im.clone()),
+        }
     }
 
-    pub fn location_advanced_offset(
-        loc: MemoryLocationInner,
-        steps: MemoryLocationInner,
-        offset: MemoryLocationInner,
-    ) -> Literal {
-        Literal::Location(loc, Some(Offset::Advanced { steps, offset }))
+    pub fn get_immediate_ref<'a>(&'a self, virtual_machine: &'a VirtualMachine) -> Result<&'a Immediate, Fault> {
+        match self {
+            Literal::Variable(name) => {
+                virtual_machine.memory.get_variable_ref(name)
+            },
+            Literal::Register(reg, num) => {
+                match reg {
+                    RegisterType::Caller => {
+                        match &virtual_machine.registers.caller[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            },
+                        }
+                    },
+                    RegisterType::Callee => {
+                        match &virtual_machine.registers.callee[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            }
+                        }
+                    }
+                }
+            },
+            Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
+        }
     }
 
-    pub fn get_immediate(
+    pub fn get_immediate_mut_from_immutable<'a>(&self, virtual_machine: &'a mut VirtualMachine) -> Result<&'a mut Immediate, Fault> {
+        match self {
+            Literal::Variable(name) => {
+                virtual_machine.memory.get_variable_mut(name)
+            },
+            Literal::Register(reg, num) => {
+                match reg {
+                    RegisterType::Caller => {
+                        match &mut virtual_machine.registers.caller[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            },
+                        }
+                    },
+                    RegisterType::Callee => {
+                        match &mut virtual_machine.registers.callee[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            },
+                        }
+                    },
+                }
+            },
+            Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
+        }
+    }
+
+    pub fn get_immediate_mut<'a>(&'a mut self, virtual_machine: &'a mut VirtualMachine) -> Result<&'a mut Immediate, Fault> {
+        match self {
+            Literal::Variable(name) => {
+                virtual_machine.memory.get_variable_mut(name)
+            },
+            Literal::Register(reg, num) => {
+                match reg {
+                    RegisterType::Caller => {
+                        match &mut virtual_machine.registers.caller[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            },
+                        }
+                    },
+                    RegisterType::Callee => {
+                        match &mut virtual_machine.registers.callee[*num as usize] {
+                            None => {
+                                Err(Fault::InvalidRegister)
+                            },
+                            Some(val) => {
+                                Ok(val)
+                            },
+                        }
+                    },
+                }
+            },
+            Literal::Immediate(im) => Ok(im),
+        }
+    }
+
+    pub fn copy_immediate(
         &self,
         virtual_machine: &VirtualMachine,
-        size: usize,
-        is_float: bool,
-    ) -> Result<Immediate, Fault> {
-        match self {
-            Literal::Location(base, offset) => {
-                let base = match base {
-                    MemoryLocationInner::Location(loc) => {
-                        let ptr: Immediate = virtual_machine
-                            .memory
-                            .get_at_of_size(*loc, POINTER_SIZE)
-                            .into();
-                        ptr.as_pointer()
-                    }
-                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                        .get_register(*reg_type, *num as usize)
-                        .unwrap()
-                        .as_pointer(),
-                    MemoryLocationInner::Immediate(imm) => imm.as_pointer(),
-                };
-                if let Pointer(ptr) = base {
-                    match offset {
-                        None => {
-                            let mut ret: Immediate =
-                                virtual_machine.memory.get_at_of_size(ptr, size).into();
-                            if is_float {
-                                if size == 32 {
-                                    ret = ret.as_float_no_coercion();
-                                } else if size == 64 {
-                                    ret = ret.as_double_no_coercion();
-                                } else {
-                                    return Err(Fault::PrimitiveTypeMismatch);
-                                }
-                            }
-                            Ok(ret)
-                        }
-                        Some(offset) => match offset {
-                            Offset::Basic(basic) => {
-                                let offset: Immediate = (Immediate::from(*basic as usize)
-                                    * Immediate::from(size))
-                                .0?
-                                .0;
-                                let mod_ptr: Immediate = (base + offset).0?.0;
-                                if let Pointer(mod_ptr) = mod_ptr.as_pointer() {
-                                    Ok(Immediate::from(
-                                        virtual_machine.memory.get_at_of_size(mod_ptr, size),
-                                    ))
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                            Offset::Advanced { steps, offset } => {
-                                let steps: Immediate = match steps {
-                                    MemoryLocationInner::Location(loc) => virtual_machine
-                                        .memory
-                                        .get_at_of_size(*loc, POINTER_SIZE)
-                                        .into(),
-                                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                                        .get_register(*reg_type, *num as usize)
-                                        .unwrap()
-                                        .as_pointer(),
-                                    MemoryLocationInner::Immediate(imm) => *imm,
-                                };
-                                let step_size: Immediate = match offset {
-                                    MemoryLocationInner::Location(loc) => virtual_machine
-                                        .memory
-                                        .get_at_of_size(*loc, POINTER_SIZE)
-                                        .into(),
-                                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                                        .get_register(*reg_type, *num as usize)
-                                        .unwrap()
-                                        .as_pointer(),
-                                    MemoryLocationInner::Immediate(imm) => *imm,
-                                };
-                                let offset: Immediate = (step_size * steps).0?.0;
-                                let mod_ptr: Immediate = (base + offset).0?.0;
-                                if let Pointer(mod_ptr) = mod_ptr.as_pointer() {
-                                    Ok(Immediate::from(
-                                        virtual_machine.memory.get_at_of_size(mod_ptr, size),
-                                    ))
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                        },
-                    }
-                } else {
-                    unreachable!()
-                }
+        destination: &mut Immediate
+    ) -> Result<(), Fault> {
+        let src: &Immediate = &self.get_immediate(virtual_machine)?;
+
+        match (destination, src) {
+            (U8(dest), U8(src)) => {
+                *dest = src.clone();
+            },
+            (U16(dest), U16(src)) => {
+                *dest = src.clone();
+            },
+            (U32(dest), U32(src)) => {
+                *dest = src.clone();
+            },
+            (U64(dest), U64(src)) => {
+                *dest = src.clone();
+            },
+            (USize(dest), USize(src)) => {
+                *dest = src.clone();
+            },
+            (Float(dest), Float(src)) => {
+                *dest = src.clone();
+            },
+            (Double(dest), Double(src)) => {
+                *dest = src.clone();
+            },
+            (Char(dest), Char(src)) => {
+                *dest = src.clone();
+            },
+            (Array(dest), Array(src)) => {
+                *dest = src.clone();
+            },
+            (Pointer(dest), Pointer(src)) => {
+                *dest = src.clone();
+            },
+            (PointerConst(dest), PointerConst(src)) => {
+                *dest = src.clone();
+            },
+            (PointerConst(dest), Pointer(src)) => {
+                *dest = src.clone();
+            },
+            (Structure(dest), Structure(src)) => {
+                *dest = src.clone();
+            },
+            _ => {
+                return Err(Fault::PrimitiveTypeMismatch);
             }
-            Literal::Register(reg_type, num) => virtual_machine
-                .get_register(*reg_type, *num as usize)
-                .ok_or(Fault::InvalidRegister),
-            Literal::Immediate(immediate) => Ok(immediate.clone()),
         }
+
+        Ok(())
     }
 
-    pub fn get_immediate_bytes<'a>(
-        &self,
-        virtual_machine: &'a mut VirtualMachine,
-        size: usize,
-    ) -> Result<Vec<&'a mut u8>, Fault> {
-        match self {
-            Literal::Location(base, offset) => {
-                let base = match base {
-                    MemoryLocationInner::Location(loc) => {
-                        let ptr: Immediate = virtual_machine
-                            .memory
-                            .get_at_of_size(*loc, POINTER_SIZE)
-                            .into();
-                        ptr.as_pointer()
-                    }
-                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                        .get_register(*reg_type, *num as usize)
-                        .unwrap()
-                        .as_pointer(),
-                    MemoryLocationInner::Immediate(imm) => imm.as_pointer(),
-                };
-                if let Pointer(ptr) = base {
-                    match offset {
-                        None => {
-                            let mut ret = virtual_machine.memory.get_at_of_size_mut(ptr, size);
-                            Ok(ret)
-                        }
-                        Some(offset) => match offset {
-                            Offset::Basic(basic) => {
-                                let offset: Immediate = (Immediate::from(*basic as usize)
-                                    * Immediate::from(size))
-                                .0?
-                                .0;
-                                let mod_ptr: Immediate = (base + offset).0?.0;
-                                if let Pointer(mod_ptr) = mod_ptr.as_pointer() {
-                                    Ok(virtual_machine.memory.get_at_of_size_mut(mod_ptr, size))
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                            Offset::Advanced { steps, offset } => {
-                                let steps: Immediate = match steps {
-                                    MemoryLocationInner::Location(loc) => virtual_machine
-                                        .memory
-                                        .get_at_of_size(*loc, POINTER_SIZE)
-                                        .into(),
-                                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                                        .get_register(*reg_type, *num as usize)
-                                        .unwrap()
-                                        .as_pointer(),
-                                    MemoryLocationInner::Immediate(imm) => *imm,
-                                };
-                                let step_size: Immediate = match offset {
-                                    MemoryLocationInner::Location(loc) => virtual_machine
-                                        .memory
-                                        .get_at_of_size(*loc, POINTER_SIZE)
-                                        .into(),
-                                    MemoryLocationInner::Register(reg_type, num) => virtual_machine
-                                        .get_register(*reg_type, *num as usize)
-                                        .unwrap()
-                                        .as_pointer(),
-                                    MemoryLocationInner::Immediate(imm) => *imm,
-                                };
-                                let offset: Immediate = (step_size * steps).0?.0;
-                                let mod_ptr: Immediate = (base + offset).0?.0;
-                                if let Pointer(mod_ptr) = mod_ptr.as_pointer() {
-                                    Ok(virtual_machine.memory.get_at_of_size_mut(mod_ptr, size))
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                        },
-                    }
-                } else {
-                    unreachable!()
-                }
-            }
-            Literal::Register(reg_type, num) => virtual_machine
-                .get_register_mut(*reg_type, *num as usize)
-                .ok_or(Fault::InvalidRegister),
-            Literal::Immediate(immediate) => panic!("Can't have a mutable immediate"),
-        }
-    }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum MemoryLocationInner {
-    Location(usize),
-    Register(RegisterType, u8),
-    Immediate(Immediate),
-}
 
 pub struct Signed(Immediate);
 
@@ -319,7 +298,11 @@ impl ZeroComparable for Immediate {
             Float(_) => 0.0f32.into(),
             Double(_) => 0.0f64.into(),
             Char(_) => 0u8.into(),
-            Pointer(_) => 0usize.into(),
+            Pointer(_) => return None,
+            USize(_) => 0usize.into(),
+            PointerConst(_) => return None,
+            Array(_) => return None,
+            Structure(_) => return None,
         };
         self.partial_cmp(&zero)
     }
@@ -335,7 +318,11 @@ impl ZeroComparable for Signed {
             Float(_) => 0.0f32.into(),
             Double(_) => 0.0f64.into(),
             Char(_) => 0i8.into(),
-            Pointer(_) => 0isize.into(),
+            Pointer(_) => return None,
+            USize(_) => 0isize.into(),
+            PointerConst(_) => return None,
+            Array(_) => return None,
+            Structure(_) => return None,
         };
         self.partial_cmp(&zero)
     }
@@ -387,31 +374,31 @@ impl From<isize> for Signed {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     PushVal(Immediate),
-    Push(usize),
-    Pop(usize),
-    Ret(Option<Literal>),
+    Pop,
+    Ret(Option<Immediate>),
     Jump(usize),
-    Compare(ComparisonOperation, usize, bool),
-    PerformOperation(Operation, usize, bool),
+    Compare(ComparisonOperation),
+    PerformOperation(Operation),
     ConditionalJump(JumpType, usize),
     AddressOf(Literal),
-    Dereference(usize),
+    Dereference,
+    #[deprecated]
     Call(usize),
-    Throw,
+    Throw(Immediate),
     Catch,
     /// Copies a value to the top of the stack
     Copy {
         src: Literal,
-        size: u8,
     },
     Move {
         dest: Literal,
         src: Literal,
-        size: u8,
     },
     Nop,
     Halt,
+    GetVar(String),
+    SaveVar(String)
 }

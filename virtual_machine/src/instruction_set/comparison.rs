@@ -176,7 +176,7 @@ impl ComparisonOperation {
                 Ok(sub)
             }
         };
-        if let Ok(imm) = ret {
+        if let Ok(imm) = &ret {
             flags.zero = imm.is_zero();
             flags.sign = !imm.msb();
             flags.parity = imm.set_bits() % 2 == 0;

@@ -37,10 +37,6 @@ impl Add<Immediate> for Immediate {
             (U64(v1), U64(v2)) => v1.overflowing_add(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 + v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 + v2), true))),
-            (Pointer(v1), Pointer(v2)) => {
-                let x = v1.overflowing_add(v2);
-                OverflowingResult(Ok((Pointer(x.0), x.1)))
-            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -57,10 +53,6 @@ impl Sub<Immediate> for Immediate {
             (U64(v1), U64(v2)) => v1.overflowing_sub(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 - v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 - v2), true))),
-            (Pointer(v1), Pointer(v2)) => {
-                let x = v1.overflowing_sub(v2);
-                OverflowingResult(Ok((Pointer(x.0), x.1)))
-            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -77,10 +69,6 @@ impl Mul<Immediate> for Immediate {
             (U64(v1), U64(v2)) => v1.overflowing_mul(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 * v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 * v2), true))),
-            (Pointer(v1), Pointer(v2)) => {
-                let x = v1.overflowing_mul(v2);
-                OverflowingResult(Ok((Pointer(x.0), x.1)))
-            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -97,10 +85,6 @@ impl Div<Immediate> for Immediate {
             (U64(v1), U64(v2)) => v1.overflowing_div(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 / v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 / v2), true))),
-            (Pointer(v1), Pointer(v2)) => {
-                let x = v1.overflowing_div(v2);
-                OverflowingResult(Ok((Pointer(x.0), x.1)))
-            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -117,10 +101,6 @@ impl Rem<Immediate> for Immediate {
             (U64(v1), U64(v2)) => v1.overflowing_rem(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 % v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 % v2), true))),
-            (Pointer(v1), Pointer(v2)) => {
-                let x = v1.overflowing_rem(v2);
-                OverflowingResult(Ok((Pointer(x.0), x.1)))
-            }
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
         }
     }
@@ -135,7 +115,6 @@ impl BitAnd<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 & v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 & v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 & v2)),
-            (Pointer(v1), Pointer(v2)) => Ok(Pointer(v1 & v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -150,7 +129,6 @@ impl BitOr<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 | v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 | v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 | v2)),
-            (Pointer(v1), Pointer(v2)) => Ok(Pointer(v1 | v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -165,7 +143,6 @@ impl BitXor<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 ^ v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 ^ v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 ^ v2)),
-            (Pointer(v1), Pointer(v2)) => Ok(Pointer(v1 ^ v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -181,10 +158,12 @@ impl Operation {
         use Ordering::*;
         let ret = match self {
             Operation::Add => {
+                let cmp1 = val1.zero_compare();
+                let cmp2 = val2.zero_compare();
                 let (ret, overflow): (Immediate, bool) = (val1 + val2).0?;
                 flags.carry = overflow;
                 flags.overflow =
-                    match (val1.zero_compare(), val2.zero_compare(), ret.zero_compare()) {
+                    match (cmp1, cmp2, ret.zero_compare()) {
                         (Some(Greater), Some(Greater), Some(Less))
                         | (Some(Greater), Some(Greater), Some(Equal)) => true,
                         (Some(Less), Some(Less), Some(Greater))
