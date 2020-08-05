@@ -12,7 +12,7 @@ use crate::vm::Fault;
 pub const MAX_MEM: usize = std::usize::MAX;
 const MID: usize = MAX_MEM / 2;
 
-
+#[derive(Debug, Clone)]
 pub enum Scope {
     Global,
     Local
@@ -54,16 +54,25 @@ impl Memory {
     }
 
     fn get_scope(&self) -> &Variables {
-        self.local_scope_stack.first().unwrap()
+        self.local_scope_stack.last().unwrap()
     }
 
     fn get_scope_mut(&mut self) -> &mut Variables {
-        self.local_scope_stack.first_mut().unwrap()
+        self.local_scope_stack.last_mut().unwrap()
+    }
+
+    pub fn new_lower_scope(&mut self) {
+        let new_scope = self.get_scope().clone();
+        self.local_scope_stack.push(new_scope);
     }
 
     pub fn new_local_scope(&mut self) {
-        let mut new_scope = self.get_scope().clone();
+        let new_scope = Variables::new();
         self.local_scope_stack.push(new_scope);
+    }
+
+    pub fn exit_local_scope(&mut self) {
+        self.local_scope_stack.pop().unwrap();
     }
 
     pub fn declare_variable(&mut self, name: &String, scope: &Scope) {
@@ -84,6 +93,10 @@ impl Memory {
                 }
 
                 let pos = self.free_list.pop().unwrap_or(self.memory.len());
+
+                if pos == self.memory.len() {
+                    self.memory.push(None);
+                }
 
                 self.get_scope_mut().mapping.insert(name, pos);
             },

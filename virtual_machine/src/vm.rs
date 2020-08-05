@@ -3,7 +3,7 @@ use crate::instruction_set::Immediate::{Double, Float, U16, U32, U64, U8};
 use crate::instruction_set::{Immediate, Instruction, JumpType, Literal, RegisterType};
 use crate::memory::Memory;
 use crate::registers::{Registers, REGISTER_COUNT};
-use crate::vm::Fault::{InvalidReturn, PrimitiveTypeMismatch};
+use crate::vm::Fault::{InvalidReturn, PrimitiveTypeMismatch, SegmentationFault};
 use byteorder::{BigEndian, ByteOrder};
 use std::cmp::Ordering;
 use std::convert::TryInto;
@@ -64,13 +64,10 @@ impl VirtualMachine {
 
 
     pub fn get_register(&self, reg_type: RegisterType, reg: usize) -> Option<Immediate> {
-        if reg > REGISTER_COUNT {
-            panic!("Illegal Register {:?} {}", reg_type, reg);
-        }
-        match reg_type {
-            RegisterType::Caller => self.registers.caller[reg].clone(),
-            RegisterType::Callee => self.registers.callee[reg].clone(),
-        }
+        (match reg_type {
+            RegisterType::Caller => self.registers.caller.get(reg),
+            RegisterType::Callee => self.registers.callee.get(reg),
+        }).map(|imm| imm.clone())
     }
 
     fn run_instruction(&mut self, instruction: &Instruction) -> Result<(), Fault> {
@@ -78,8 +75,14 @@ impl VirtualMachine {
         match instruction {
             Instruction::PushVal(immediate) => self.push(immediate.clone()),
             Instruction::Pop => {
-                let _ = self.pop();
-            }
+                let _ = self.pop()?;
+            },
+            Instruction::PopTo(dest) => {
+                let imm = self.pop()?;
+                let mut dest = dest.clone();
+                let dest_imm = dest.get_immediate_mut(self)?;
+                *dest_imm = imm;
+            },
             Instruction::Ret(option) => {
                 let ret_location: Immediate = self.pop()?;
                 if let Immediate::USize(ret_pos_ptr) = ret_location {
@@ -88,7 +91,7 @@ impl VirtualMachine {
                     return Err(Fault::InvalidReturn);
                 }
                 if let Some(imm) = option {
-                    self.push(imm.clone());
+                    self.push(imm.get_immediate(self)?);
                 }
             }
             Instruction::Jump(counter) => {
@@ -113,6 +116,7 @@ impl VirtualMachine {
                     Literal::Variable(v) => {
                         let ret: &Immediate = self.memory.get_variable_ref(v)?;
                         let pointer = Immediate::Pointer(ret as *const Immediate as *mut Immediate);
+                        self.push(pointer);
                     },
                     _ => {
                         return Err(Fault::InvalidAddressOfLocation(location.clone()));
@@ -137,16 +141,17 @@ impl VirtualMachine {
                 })
             }
             Instruction::Call(location) => {
-                let program_counter = self.program_counter;
-                let pc_imm = Immediate::from(program_counter);
+                let program_counter = self.program_counter + 1;
+                let pc_imm = Immediate::USize(program_counter);
                 self.push(pc_imm);
-                self.program_counter = *location;
+                next_program_counter = *location;
             }
             Instruction::Throw(imm) => {
                 unimplemented!("Throwing has not been implemented yet");
             }
             Instruction::Catch => {}
             Instruction::ConditionalJump(jump_type, location) => {
+                let _ = self.pop()?;
                 let cond = match jump_type {
                     JumpType::Zero | JumpType::Equal => self.flags.zero,
                     JumpType::NotZero | JumpType::NotEqual => !self.flags.zero,
@@ -167,7 +172,7 @@ impl VirtualMachine {
                     next_program_counter = *location;
                 }
             }
-            Instruction::Copy { src } => {
+            Instruction::Push { src } => {
                 let imm = src.get_immediate(self)?;
                 self.push(imm.clone());
             }
@@ -179,23 +184,69 @@ impl VirtualMachine {
                 let imm: &mut Immediate = dest.get_immediate_mut_from_immutable(self)?;
                 *imm = immediate;
             },
+            Instruction::DeclareVar(name, scope) => {
+               self.memory.declare_variable(name, scope);
+            },
             Instruction::GetVar(name) => {
                 self.push(self.memory.get_variable(name)?);
-            }
+            },
             Instruction::SaveVar(name) => {
                 let imm = self.pop()?;
                 self.memory.set_variable(name, imm)?;
+            },
+            Instruction::Coerce { dest_type } => {
+                let src: Immediate = self.pop()?;
+                let imm = match dest_type {
+                    U8(_) => {
+                        src.into_u8()
+                    },
+                    U16(_) => {
+                        src.into_u16()
+                    },
+                    U32(_) => {
+                        src.into_u32()
+                    },
+                    U64(_) => {
+                        src.into_u64()
+                    },
+                    Immediate::USize(_) => {
+                        src.into_usize()
+                    },
+                    Float(_) => {
+                        src.into_float()
+                    },
+                    Double(_) => {
+                        src.into_double()
+                    },
+                    Immediate::Char(_) => {
+                        src.into_char()
+                    },
+                    _ => {
+                        return Err(PrimitiveTypeMismatch)
+                    }
+                };
+                self.push(imm);
+            }
+            Instruction::Enter => {
+                self.memory.new_local_scope();
+            },
+            Instruction::Lower => {
+                self.memory.new_lower_scope();
+            }
+            Instruction::Exit => {
+                self.memory.exit_local_scope();
             }
         }
         self.program_counter = next_program_counter;
         Ok(())
     }
 
-    pub fn execute(instructions: Vec<Instruction>) -> Result<u32, Fault> {
+    pub fn execute(instructions: Vec<Instruction>, start: usize) -> Result<u32, Fault> {
         let mut vm = VirtualMachine::new();
+        vm.program_counter = start;
         vm.instructions = instructions;
         while vm.cont {
-            let instruction = vm.instructions[vm.program_counter].clone();
+            let instruction = vm.instructions.get(vm.program_counter).ok_or_else(|| SegmentationFault)?.clone();
             vm.run_instruction(&instruction)?;
         }
         match vm.pop()? {
@@ -208,3 +259,4 @@ impl VirtualMachine {
         }
     }
 }
+

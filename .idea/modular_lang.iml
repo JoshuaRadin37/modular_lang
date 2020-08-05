@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/virtual_machine/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lexer/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/virtual_machine/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/virtual_machine/target" />
     </content>

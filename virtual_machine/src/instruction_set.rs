@@ -8,6 +8,8 @@ use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub, Deref};
 mod immediate;
 pub use immediate::*;
 use std::string::String;
+use crate::memory::Scope;
+use crate::vm::Fault::{SegmentationFault, InvalidRegister};
 
 pub mod arithmetic;
 
@@ -104,24 +106,14 @@ impl Literal {
             Literal::Register(reg, num) => {
                 match reg {
                     RegisterType::Caller => {
-                        match &virtual_machine.registers.caller[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val.clone())
-                            },
-                        }
+                        virtual_machine.registers.caller.get(*num as usize)
+                            .map(|i| i.clone())
+                            .ok_or(InvalidRegister)
                     },
                     RegisterType::Callee => {
-                        match &virtual_machine.registers.callee[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val.clone())
-                            },
-                        }
+                        virtual_machine.registers.callee.get(*num as usize)
+                            .map(|i| i.clone())
+                            .ok_or(InvalidRegister)
                     },
                 }
             },
@@ -137,25 +129,13 @@ impl Literal {
             Literal::Register(reg, num) => {
                 match reg {
                     RegisterType::Caller => {
-                        match &virtual_machine.registers.caller[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            },
-                        }
+                        virtual_machine.registers.caller.get(*num as usize)
+                            .ok_or(InvalidRegister)
                     },
                     RegisterType::Callee => {
-                        match &virtual_machine.registers.callee[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            }
-                        }
-                    }
+                        virtual_machine.registers.callee.get(*num as usize)
+                            .ok_or(InvalidRegister)
+                    },
                 }
             },
             Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
@@ -170,24 +150,12 @@ impl Literal {
             Literal::Register(reg, num) => {
                 match reg {
                     RegisterType::Caller => {
-                        match &mut virtual_machine.registers.caller[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            },
-                        }
+                        virtual_machine.registers.caller.get_mut(*num as usize)
+                            .ok_or(InvalidRegister)
                     },
                     RegisterType::Callee => {
-                        match &mut virtual_machine.registers.callee[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            },
-                        }
+                        virtual_machine.registers.callee.get_mut(*num as usize)
+                            .ok_or(InvalidRegister)
                     },
                 }
             },
@@ -203,24 +171,12 @@ impl Literal {
             Literal::Register(reg, num) => {
                 match reg {
                     RegisterType::Caller => {
-                        match &mut virtual_machine.registers.caller[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            },
-                        }
+                        virtual_machine.registers.caller.get_mut(*num as usize)
+                            .ok_or(InvalidRegister)
                     },
                     RegisterType::Callee => {
-                        match &mut virtual_machine.registers.callee[*num as usize] {
-                            None => {
-                                Err(Fault::InvalidRegister)
-                            },
-                            Some(val) => {
-                                Ok(val)
-                            },
-                        }
+                        virtual_machine.registers.callee.get_mut(*num as usize)
+                            .ok_or(InvalidRegister)
                     },
                 }
             },
@@ -378,19 +334,19 @@ impl From<isize> for Signed {
 pub enum Instruction {
     PushVal(Immediate),
     Pop,
-    Ret(Option<Immediate>),
+    PopTo(Literal),
+    Ret(Option<Literal>),
     Jump(usize),
     Compare(ComparisonOperation),
     PerformOperation(Operation),
     ConditionalJump(JumpType, usize),
     AddressOf(Literal),
     Dereference,
-    #[deprecated]
     Call(usize),
     Throw(Immediate),
     Catch,
     /// Copies a value to the top of the stack
-    Copy {
+    Push {
         src: Literal,
     },
     Move {
@@ -399,6 +355,11 @@ pub enum Instruction {
     },
     Nop,
     Halt,
+    DeclareVar(String, Scope),
     GetVar(String),
-    SaveVar(String)
+    SaveVar(String),
+    Coerce { dest_type: Immediate },
+    Enter,
+    Lower,
+    Exit
 }

@@ -26,6 +26,13 @@ impl From<(u64, bool)> for OverflowingResult {
     }
 }
 
+impl From<(usize, bool)> for OverflowingResult {
+    fn from(t: (usize, bool)) -> Self {
+        OverflowingResult(Ok((USize(t.0), t.1)))
+    }
+}
+
+
 impl Add<Immediate> for Immediate {
     type Output = OverflowingResult;
 
@@ -35,6 +42,7 @@ impl Add<Immediate> for Immediate {
             (U16(v1), U16(v2)) => v1.overflowing_add(v2).into(),
             (U32(v1), U32(v2)) => v1.overflowing_add(v2).into(),
             (U64(v1), U64(v2)) => v1.overflowing_add(v2).into(),
+            (USize(v1), USize(v2)) => v1.overflowing_add(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 + v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 + v2), true))),
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
@@ -51,6 +59,7 @@ impl Sub<Immediate> for Immediate {
             (U16(v1), U16(v2)) => v1.overflowing_sub(v2).into(),
             (U32(v1), U32(v2)) => v1.overflowing_sub(v2).into(),
             (U64(v1), U64(v2)) => v1.overflowing_sub(v2).into(),
+            (USize(v1), USize(v2)) => v1.overflowing_sub(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 - v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 - v2), true))),
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
@@ -67,6 +76,7 @@ impl Mul<Immediate> for Immediate {
             (U16(v1), U16(v2)) => v1.overflowing_mul(v2).into(),
             (U32(v1), U32(v2)) => v1.overflowing_mul(v2).into(),
             (U64(v1), U64(v2)) => v1.overflowing_mul(v2).into(),
+            (USize(v1), USize(v2)) => v1.overflowing_mul(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 * v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 * v2), true))),
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
@@ -83,6 +93,7 @@ impl Div<Immediate> for Immediate {
             (U16(v1), U16(v2)) => v1.overflowing_div(v2).into(),
             (U32(v1), U32(v2)) => v1.overflowing_div(v2).into(),
             (U64(v1), U64(v2)) => v1.overflowing_div(v2).into(),
+            (USize(v1), USize(v2)) => v1.overflowing_div(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 / v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 / v2), true))),
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
@@ -99,6 +110,7 @@ impl Rem<Immediate> for Immediate {
             (U16(v1), U16(v2)) => v1.overflowing_rem(v2).into(),
             (U32(v1), U32(v2)) => v1.overflowing_rem(v2).into(),
             (U64(v1), U64(v2)) => v1.overflowing_rem(v2).into(),
+            (USize(v1), USize(v2)) => v1.overflowing_rem(v2).into(),
             (Float(v1), Float(v2)) => OverflowingResult(Ok((Float(v1 % v2), false))),
             (Double(v1), Double(v2)) => OverflowingResult(Ok((Double(v1 % v2), true))),
             _ => OverflowingResult(Err(Fault::PrimitiveTypeMismatch)),
@@ -115,6 +127,7 @@ impl BitAnd<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 & v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 & v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 & v2)),
+            (USize(v1), USize(v2)) =>Ok(USize(v1 & v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -129,6 +142,7 @@ impl BitOr<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 | v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 | v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 | v2)),
+            (USize(v1), USize(v2)) =>Ok(USize(v1 | v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -143,6 +157,7 @@ impl BitXor<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 ^ v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 ^ v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 ^ v2)),
+            (USize(v1), USize(v2)) =>Ok(USize(v1 ^ v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }

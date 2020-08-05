@@ -76,6 +76,10 @@ impl Immediate {
             self.into_u64()
         }
     }
+    pub fn into_usize(self) -> Self {
+        into_other_primitive!(self, USize, usize)
+    }
+
     pub fn into_float(self) -> Self {
         match self {
             U8(d) => Float(d as f32),
@@ -187,6 +191,7 @@ impl Immediate {
             U16(d) => d >> 15 > 0,
             U32(d) => d >> 31 > 0,
             U64(d) => d >> 63 > 0,
+            USize(d) => d >> (if POINTER_SIZE == 4 { 31 } else { 63}) > 0,
             Char(d) => *d as u8 >> 7 > 0,
             _ => {
                 panic!("{:?}", Fault::PrimitiveTypeMismatch);
@@ -200,6 +205,7 @@ impl Immediate {
             U16(d) => d & 0x1 > 0,
             U32(d) => d & 0x1 > 0,
             U64(d) => d & 0x1 > 0,
+            USize(d) => d & 0x1 > 0,
             Char(d) => *d as u8 & 0x1 > 0,
             _ => {
                 panic!("{:?}", Fault::PrimitiveTypeMismatch);
