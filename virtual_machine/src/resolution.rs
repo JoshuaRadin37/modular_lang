@@ -1,10 +1,9 @@
 use std::error::Error;
-use std::fmt::{Debug, Formatter, Display};
+use std::fmt::{Debug, Display, Formatter};
 use std::iter::FromIterator;
 
 pub mod functions;
 pub mod types;
-
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Identifier(String);
@@ -14,7 +13,6 @@ impl Display for Identifier {
         write!(f, "{}", self.as_ref())
     }
 }
-
 
 pub struct IllegalCharacterInIdentifier(char);
 
@@ -30,17 +28,15 @@ impl Display for IllegalCharacterInIdentifier {
     }
 }
 
-impl Error for IllegalCharacterInIdentifier { }
+impl Error for IllegalCharacterInIdentifier {}
 
 impl Identifier {
-
     pub fn new(name: String) -> Result<Self, IllegalCharacterInIdentifier> {
-
         for (index, c) in name.char_indices() {
             match c {
-                'a'..='z' | 'A'..='Z' | '_' => { },
-                '0'..='9' if index > 0 => { },
-                illegal => return Err(IllegalCharacterInIdentifier(illegal))
+                'a'..='z' | 'A'..='Z' | '_' => {}
+                '0'..='9' if index > 0 => {}
+                illegal => return Err(IllegalCharacterInIdentifier(illegal)),
             }
         }
 
@@ -57,11 +53,10 @@ impl AsRef<String> for Identifier {
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum FullIdentifier {
     Name(Identifier),
-    Namespaced(Identifier, Box<FullIdentifier>)
+    Namespaced(Identifier, Box<FullIdentifier>),
 }
 
 impl FullIdentifier {
-
     pub fn get_name(&self) -> &Identifier {
         match self {
             FullIdentifier::Name(name) => name,
@@ -71,7 +66,7 @@ impl FullIdentifier {
 }
 
 impl FromIterator<Identifier> for FullIdentifier {
-    fn from_iter<T: IntoIterator<Item=Identifier>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = Identifier>>(iter: T) -> Self {
         let collected: Vec<_> = iter.into_iter().collect();
         let mut reversed = collected.into_iter().rev();
         let mut output = FullIdentifier::Name(reversed.next().unwrap());
@@ -82,8 +77,8 @@ impl FromIterator<Identifier> for FullIdentifier {
     }
 }
 
-impl <S : AsRef<str>> FromIterator<S> for FullIdentifier {
-    fn from_iter<T: IntoIterator<Item=S>>(iter: T) -> Self {
+impl<S: AsRef<str>> FromIterator<S> for FullIdentifier {
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
         let id_iter = iter.into_iter().map(|s: S| Identifier::from(s.as_ref()));
         FullIdentifier::from_iter(id_iter)
     }
@@ -98,12 +93,8 @@ impl Iterator for IdentifierIter {
         let current = std::mem::replace(&mut self.0, None);
         let (out, next): (Option<Identifier>, Option<FullIdentifier>) = match current {
             None => (None, None),
-            Some(FullIdentifier::Name(last)) => {
-                (Some(last), None)
-            },
-            Some(FullIdentifier::Namespaced(out, next)) => {
-                (Some(out), Some(*next))
-            }
+            Some(FullIdentifier::Name(last)) => (Some(last), None),
+            Some(FullIdentifier::Namespaced(out, next)) => (Some(out), Some(*next)),
         };
         std::mem::replace(&mut self.0, next);
         out
@@ -131,11 +122,11 @@ impl<'a> IntoIterator for &'a FullIdentifier {
                 FullIdentifier::Name(last) => {
                     output.push(last);
                     break;
-                },
+                }
                 FullIdentifier::Namespaced(namespace, next) => {
                     output.push(namespace);
-                    current = & *next;
-                },
+                    current = &*next;
+                }
             }
         }
 
@@ -145,7 +136,11 @@ impl<'a> IntoIterator for &'a FullIdentifier {
 
 impl Display for FullIdentifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let strings: Vec<String> = self.into_iter().map(|ident| ident.as_ref()).cloned().collect::<Vec<_>>();
+        let strings: Vec<String> = self
+            .into_iter()
+            .map(|ident| ident.as_ref())
+            .cloned()
+            .collect::<Vec<_>>();
         write!(f, "{}", strings.join("::"))
     }
 }
@@ -161,8 +156,7 @@ impl From<String> for Identifier {
     }
 }
 
-impl <'a> From<&'a str> for Identifier {
-
+impl<'a> From<&'a str> for Identifier {
     /// Converts from a `&str` to an identifier
     ///
     /// # Panic
@@ -179,14 +173,13 @@ impl From<Identifier> for FullIdentifier {
     }
 }
 
-impl <S : AsRef<str>> From<S> for FullIdentifier {
+impl<S: AsRef<str>> From<S> for FullIdentifier {
     fn from(s: S) -> Self {
         FullIdentifier::Name(Identifier::from(s.as_ref()))
     }
 }
 
 pub trait Resolvable {
-
     fn get_identifier(&self) -> &FullIdentifier;
 }
 
@@ -227,11 +220,9 @@ mod test {
         let namespaced_str = format!("{}", namespaced);
         assert_eq!(&*namespaced_str, "std::Object");
 
-        let triple_namespaced = FullIdentifier::Namespaced(Identifier::from("modular"), Box::new(namespaced));
+        let triple_namespaced =
+            FullIdentifier::Namespaced(Identifier::from("modular"), Box::new(namespaced));
         let namespaced_str = format!("{}", triple_namespaced);
         assert_eq!(&*namespaced_str, "modular::std::Object");
-
     }
-
 }
-

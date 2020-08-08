@@ -3,8 +3,8 @@ use std::iter::Iterator;
 use std::sync::{Arc, RwLock};
 
 use crate::instruction_set::Immediate;
-use crate::vm::Fault::{NotAVariable, SegmentationFault};
 use crate::vm::Fault;
+use crate::vm::Fault::{NotAVariable, SegmentationFault};
 
 pub const MAX_MEM: usize = std::usize::MAX;
 const MID: usize = MAX_MEM / 2;
@@ -12,24 +12,22 @@ const MID: usize = MAX_MEM / 2;
 #[derive(Debug, Clone)]
 pub enum Scope {
     Global,
-    Local
+    Local,
 }
 
 #[derive(Clone)]
-struct Variables // A variable can exist for shorter than it's value, but it should not exist for longer than it's value
+struct Variables
+// A variable can exist for shorter than it's value, but it should not exist for longer than it's value
 {
-    mapping: HashMap<String, usize>
+    mapping: HashMap<String, usize>,
 }
 
-
 impl Variables {
-
     fn new() -> Self {
         Self {
-            mapping: HashMap::new()
+            mapping: HashMap::new(),
         }
     }
-
 }
 
 #[derive(Clone)]
@@ -37,7 +35,7 @@ pub struct Memory {
     static_memory: Arc<RwLock<HashMap<String, Option<Immediate>>>>,
     memory: Vec<Option<Immediate>>,
     free_list: Vec<usize>,
-    local_scope_stack: Vec<Variables>
+    local_scope_stack: Vec<Variables>,
 }
 
 impl Memory {
@@ -46,7 +44,7 @@ impl Memory {
             static_memory: Arc::new(RwLock::new(HashMap::new())),
             memory: vec![],
             free_list: vec![],
-            local_scope_stack: vec![Variables::new()]
+            local_scope_stack: vec![Variables::new()],
         }
     }
 
@@ -82,9 +80,8 @@ impl Memory {
                 }
 
                 writer.insert(name, None);
-            },
+            }
             Scope::Local => {
-
                 if self.get_scope().mapping.contains_key(&name) {
                     panic!("Variable {} already declared", name);
                 }
@@ -96,11 +93,8 @@ impl Memory {
                 }
 
                 self.get_scope_mut().mapping.insert(name, pos);
-            },
+            }
         }
-
-
-
     }
 
     pub fn set_variable(&mut self, name: &String, value: Immediate) -> Result<(), Fault> {
@@ -109,11 +103,11 @@ impl Memory {
             match writer.get_mut(name) {
                 None => {
                     return Err(NotAVariable(name.to_string()));
-                },
+                }
                 Some(mem) => {
                     *mem = Some(value);
                     return Ok(());
-                },
+                }
             }
         }
 
@@ -131,10 +125,10 @@ impl Memory {
             match reader.get(name) {
                 None => {
                     return Err(NotAVariable(name.to_string()));
-                },
+                }
                 Some(Some(mem)) => {
                     return Ok(mem.clone());
-                },
+                }
                 Some(None) => {
                     return Err(SegmentationFault);
                 }
@@ -142,23 +136,17 @@ impl Memory {
         }
 
         match self.get_scope().mapping.get(name) {
-            None => {
-                unreachable!()
-            },
+            None => unreachable!(),
             Some(pos) => {
                 if let Some(imm) = self.memory.get(*pos) {
                     match imm {
-                        None => {
-                            Err(SegmentationFault)
-                        },
-                        Some(imm) => {
-                            Ok(imm.clone())
-                        },
+                        None => Err(SegmentationFault),
+                        Some(imm) => Ok(imm.clone()),
                     }
                 } else {
                     panic!("{} is not a variable", name);
                 }
-            },
+            }
         }
     }
     pub fn get_variable_ref(&self, name: &String) -> Result<&Immediate, Fault> {
@@ -167,14 +155,10 @@ impl Memory {
             match reader.get(name) {
                 None => {
                     return Err(NotAVariable(name.to_string()));
-                },
+                }
                 Some(Some(mem)) => {
-                    return Ok(
-                        unsafe {
-                            & *(mem as *const Immediate)
-                        }
-                    );
-                },
+                    return Ok(unsafe { &*(mem as *const Immediate) });
+                }
                 Some(None) => {
                     return Err(SegmentationFault);
                 }
@@ -182,38 +166,30 @@ impl Memory {
         }
 
         match self.get_scope().mapping.get(name) {
-            None => {
-                unreachable!()
-            },
+            None => unreachable!(),
             Some(pos) => {
                 if let Some(imm) = self.memory.get(*pos) {
                     match imm {
-                        None => {
-                            Err(SegmentationFault)
-                        },
-                        Some(imm) => {
-                            Ok(imm)
-                        },
+                        None => Err(SegmentationFault),
+                        Some(imm) => Ok(imm),
                     }
                 } else {
                     panic!("{} is not a variable", name);
                 }
-            },
+            }
         }
     }
 
-    pub fn get_variable_mut(&mut self, name: &String) -> Result<& mut Immediate, Fault> {
+    pub fn get_variable_mut(&mut self, name: &String) -> Result<&mut Immediate, Fault> {
         if !self.get_scope().mapping.contains_key(name) {
             let mut writer = self.static_memory.write().expect("Statics poisoned");
             match writer.get_mut(name) {
                 None => {
                     return Err(NotAVariable(name.to_string()));
-                },
+                }
                 Some(Some(mem)) => {
-                    return Ok(unsafe {
-                        &mut *(mem as *mut Immediate)
-                    });
-                },
+                    return Ok(unsafe { &mut *(mem as *mut Immediate) });
+                }
                 Some(None) => {
                     return Err(SegmentationFault);
                 }
@@ -222,35 +198,28 @@ impl Memory {
 
         let option = self.get_scope().mapping.get(name).map(|pos| *pos);
         match option {
-            None => {
-                unreachable!()
-            },
+            None => unreachable!(),
             Some(pos) => {
                 if let Some(imm) = self.memory.get_mut(pos) {
                     match imm {
-                        None => {
-                            Err(SegmentationFault)
-                        },
-                        Some(imm) => {
-                            Ok(imm)
-                        },
+                        None => Err(SegmentationFault),
+                        Some(imm) => Ok(imm),
                     }
                 } else {
                     panic!("{} is not a variable", name);
                 }
-            },
+            }
         }
     }
 
     pub fn collect_garbage(&mut self) {
-        let used_memory =
-            self.local_scope_stack.iter().map(
-                |vars|
-                    vars.mapping.values()
-            )
-                .flatten()
-                .map(|pos| *pos)
-                .collect::<HashSet<usize>>();
+        let used_memory = self
+            .local_scope_stack
+            .iter()
+            .map(|vars| vars.mapping.values())
+            .flatten()
+            .map(|pos| *pos)
+            .collect::<HashSet<usize>>();
 
         let mut unused: Vec<usize> = (0..self.memory.len())
             .into_iter()
@@ -260,6 +229,4 @@ impl Memory {
         unused.sort();
         self.free_list = unused;
     }
-
-
 }

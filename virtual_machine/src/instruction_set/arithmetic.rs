@@ -32,7 +32,6 @@ impl From<(usize, bool)> for OverflowingResult {
     }
 }
 
-
 impl Add<Immediate> for Immediate {
     type Output = OverflowingResult;
 
@@ -127,7 +126,7 @@ impl BitAnd<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 & v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 & v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 & v2)),
-            (USize(v1), USize(v2)) =>Ok(USize(v1 & v2)),
+            (USize(v1), USize(v2)) => Ok(USize(v1 & v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -142,7 +141,7 @@ impl BitOr<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 | v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 | v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 | v2)),
-            (USize(v1), USize(v2)) =>Ok(USize(v1 | v2)),
+            (USize(v1), USize(v2)) => Ok(USize(v1 | v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -157,7 +156,7 @@ impl BitXor<Immediate> for Immediate {
             (U16(v1), U16(v2)) => Ok(U16(v1 ^ v2)),
             (U32(v1), U32(v2)) => Ok(U32(v1 ^ v2)),
             (U64(v1), U64(v2)) => Ok(U64(v1 ^ v2)),
-            (USize(v1), USize(v2)) =>Ok(USize(v1 ^ v2)),
+            (USize(v1), USize(v2)) => Ok(USize(v1 ^ v2)),
             _ => Err(Fault::PrimitiveTypeMismatch),
         }
     }
@@ -177,14 +176,13 @@ impl Operation {
                 let cmp2 = val2.zero_compare();
                 let (ret, overflow): (Immediate, bool) = (val1 + val2).0?;
                 flags.carry = overflow;
-                flags.overflow =
-                    match (cmp1, cmp2, ret.zero_compare()) {
-                        (Some(Greater), Some(Greater), Some(Less))
-                        | (Some(Greater), Some(Greater), Some(Equal)) => true,
-                        (Some(Less), Some(Less), Some(Greater))
-                        | (Some(Less), Some(Less), Some(Equal)) => true,
-                        _ => false,
-                    };
+                flags.overflow = match (cmp1, cmp2, ret.zero_compare()) {
+                    (Some(Greater), Some(Greater), Some(Less))
+                    | (Some(Greater), Some(Greater), Some(Equal)) => true,
+                    (Some(Less), Some(Less), Some(Greater))
+                    | (Some(Less), Some(Less), Some(Equal)) => true,
+                    _ => false,
+                };
                 flags.sign = !ret.msb();
 
                 ret

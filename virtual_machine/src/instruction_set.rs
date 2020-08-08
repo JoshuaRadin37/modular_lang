@@ -7,11 +7,11 @@ pub use immediate::*;
 use crate::flags::Flags;
 use crate::instruction_set::Immediate::*;
 use crate::memory::Scope;
-use crate::vm::{Fault, POINTER_SIZE, VirtualMachine};
 use crate::vm::Fault::InvalidRegister;
+use crate::vm::{Fault, VirtualMachine, POINTER_SIZE};
 
-mod immediate;
 pub mod arithmetic;
+mod immediate;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Operation {
@@ -77,7 +77,6 @@ pub enum RegisterType {
     Callee,
 }
 
-
 #[derive(Debug, Clone)]
 pub enum Literal {
     Variable(String),
@@ -94,91 +93,92 @@ impl Literal {
         Literal::Immediate(imm)
     }
 
-    pub fn variable<'a, S : Deref<Target=&'a str>>(loc: S) -> Literal {
+    pub fn variable<'a, S: Deref<Target = &'a str>>(loc: S) -> Literal {
         Literal::Variable(loc.to_string())
     }
 
     pub fn get_immediate(&self, virtual_machine: &VirtualMachine) -> Result<Immediate, Fault> {
         match self {
-            Literal::Variable(name) => {
-                virtual_machine.memory.get_variable(name)
-            },
-            Literal::Register(reg, num) => {
-                match reg {
-                    RegisterType::Caller => {
-                        virtual_machine.registers.caller.get(*num as usize)
-                            .map(|i| i.clone())
-                            .ok_or(InvalidRegister)
-                    },
-                    RegisterType::Callee => {
-                        virtual_machine.registers.callee.get(*num as usize)
-                            .map(|i| i.clone())
-                            .ok_or(InvalidRegister)
-                    },
-                }
+            Literal::Variable(name) => virtual_machine.memory.get_variable(name),
+            Literal::Register(reg, num) => match reg {
+                RegisterType::Caller => virtual_machine
+                    .registers
+                    .caller
+                    .get(*num as usize)
+                    .map(|i| i.clone())
+                    .ok_or(InvalidRegister),
+                RegisterType::Callee => virtual_machine
+                    .registers
+                    .callee
+                    .get(*num as usize)
+                    .map(|i| i.clone())
+                    .ok_or(InvalidRegister),
             },
             Literal::Immediate(im) => Ok(im.clone()),
         }
     }
 
-    pub fn get_immediate_ref<'a>(&'a self, virtual_machine: &'a VirtualMachine) -> Result<&'a Immediate, Fault> {
+    pub fn get_immediate_ref<'a>(
+        &'a self,
+        virtual_machine: &'a VirtualMachine,
+    ) -> Result<&'a Immediate, Fault> {
         match self {
-            Literal::Variable(name) => {
-                virtual_machine.memory.get_variable_ref(name)
-            },
-            Literal::Register(reg, num) => {
-                match reg {
-                    RegisterType::Caller => {
-                        virtual_machine.registers.caller.get(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                    RegisterType::Callee => {
-                        virtual_machine.registers.callee.get(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                }
+            Literal::Variable(name) => virtual_machine.memory.get_variable_ref(name),
+            Literal::Register(reg, num) => match reg {
+                RegisterType::Caller => virtual_machine
+                    .registers
+                    .caller
+                    .get(*num as usize)
+                    .ok_or(InvalidRegister),
+                RegisterType::Callee => virtual_machine
+                    .registers
+                    .callee
+                    .get(*num as usize)
+                    .ok_or(InvalidRegister),
             },
             Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
         }
     }
 
-    pub fn get_immediate_mut_from_immutable<'a>(&self, virtual_machine: &'a mut VirtualMachine) -> Result<&'a mut Immediate, Fault> {
+    pub fn get_immediate_mut_from_immutable<'a>(
+        &self,
+        virtual_machine: &'a mut VirtualMachine,
+    ) -> Result<&'a mut Immediate, Fault> {
         match self {
-            Literal::Variable(name) => {
-                virtual_machine.memory.get_variable_mut(name)
-            },
-            Literal::Register(reg, num) => {
-                match reg {
-                    RegisterType::Caller => {
-                        virtual_machine.registers.caller.get_mut(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                    RegisterType::Callee => {
-                        virtual_machine.registers.callee.get_mut(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                }
+            Literal::Variable(name) => virtual_machine.memory.get_variable_mut(name),
+            Literal::Register(reg, num) => match reg {
+                RegisterType::Caller => virtual_machine
+                    .registers
+                    .caller
+                    .get_mut(*num as usize)
+                    .ok_or(InvalidRegister),
+                RegisterType::Callee => virtual_machine
+                    .registers
+                    .callee
+                    .get_mut(*num as usize)
+                    .ok_or(InvalidRegister),
             },
             Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
         }
     }
 
-    pub fn get_immediate_mut<'a>(&'a mut self, virtual_machine: &'a mut VirtualMachine) -> Result<&'a mut Immediate, Fault> {
+    pub fn get_immediate_mut<'a>(
+        &'a mut self,
+        virtual_machine: &'a mut VirtualMachine,
+    ) -> Result<&'a mut Immediate, Fault> {
         match self {
-            Literal::Variable(name) => {
-                virtual_machine.memory.get_variable_mut(name)
-            },
-            Literal::Register(reg, num) => {
-                match reg {
-                    RegisterType::Caller => {
-                        virtual_machine.registers.caller.get_mut(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                    RegisterType::Callee => {
-                        virtual_machine.registers.callee.get_mut(*num as usize)
-                            .ok_or(InvalidRegister)
-                    },
-                }
+            Literal::Variable(name) => virtual_machine.memory.get_variable_mut(name),
+            Literal::Register(reg, num) => match reg {
+                RegisterType::Caller => virtual_machine
+                    .registers
+                    .caller
+                    .get_mut(*num as usize)
+                    .ok_or(InvalidRegister),
+                RegisterType::Callee => virtual_machine
+                    .registers
+                    .callee
+                    .get_mut(*num as usize)
+                    .ok_or(InvalidRegister),
             },
             Literal::Immediate(im) => Ok(im),
         }
@@ -187,50 +187,50 @@ impl Literal {
     pub fn copy_immediate(
         &self,
         virtual_machine: &VirtualMachine,
-        destination: &mut Immediate
+        destination: &mut Immediate,
     ) -> Result<(), Fault> {
         let src: &Immediate = &self.get_immediate(virtual_machine)?;
 
         match (destination, src) {
             (U8(dest), U8(src)) => {
                 *dest = src.clone();
-            },
+            }
             (U16(dest), U16(src)) => {
                 *dest = src.clone();
-            },
+            }
             (U32(dest), U32(src)) => {
                 *dest = src.clone();
-            },
+            }
             (U64(dest), U64(src)) => {
                 *dest = src.clone();
-            },
+            }
             (USize(dest), USize(src)) => {
                 *dest = src.clone();
-            },
+            }
             (Float(dest), Float(src)) => {
                 *dest = src.clone();
-            },
+            }
             (Double(dest), Double(src)) => {
                 *dest = src.clone();
-            },
+            }
             (Char(dest), Char(src)) => {
                 *dest = src.clone();
-            },
+            }
             (Array(dest), Array(src)) => {
                 *dest = src.clone();
-            },
+            }
             (Pointer(dest), Pointer(src)) => {
                 *dest = src.clone();
-            },
+            }
             (PointerConst(dest), PointerConst(src)) => {
                 *dest = src.clone();
-            },
+            }
             (PointerConst(dest), Pointer(src)) => {
                 *dest = src.clone();
-            },
+            }
             (DetailedType(dest), DetailedType(src)) => {
                 *dest = src.clone();
-            },
+            }
             _ => {
                 return Err(Fault::PrimitiveTypeMismatch);
             }
@@ -238,9 +238,7 @@ impl Literal {
 
         Ok(())
     }
-
 }
-
 
 pub struct Signed(Immediate);
 
@@ -356,9 +354,11 @@ pub enum Instruction {
     DeclareVar(String, Scope),
     GetVar(String),
     SaveVar(String),
-    Coerce { dest_type: Immediate },
+    Coerce {
+        dest_type: Immediate,
+    },
     CallFunction(Immediate),
     Enter,
     Lower,
-    Exit
+    Exit,
 }

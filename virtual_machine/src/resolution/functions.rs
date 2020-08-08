@@ -1,16 +1,15 @@
-use crate::resolution::{FullIdentifier, Identifier, Resolvable};
 use crate::instruction_set::{Immediate, Instruction};
+use crate::resolution::{FullIdentifier, Identifier, Resolvable};
 
 #[derive(Clone, Debug)]
 pub struct Function {
     identifier: FullIdentifier,
     parameters: Vec<(Identifier, Immediate)>,
     ret_type: Option<Box<Immediate>>,
-    instructions: Vec<Instruction>
+    instructions: Vec<Instruction>,
 }
 
 impl Function {
-
     pub fn get_parameters(&self) -> &Vec<(Identifier, Immediate)> {
         &self.parameters
     }
@@ -18,9 +17,7 @@ impl Function {
     pub fn get_ret_type(&self) -> Option<&Immediate> {
         match &self.ret_type {
             None => None,
-            Some(ret) => {
-                Some(&*ret)
-            },
+            Some(ret) => Some(&*ret),
         }
     }
 
@@ -32,21 +29,20 @@ impl Function {
 pub struct FunctionBuilder {
     in_progress: Function,
     set_parameters: bool,
-    set_instructions: bool
+    set_instructions: bool,
 }
 
 impl FunctionBuilder {
-
     pub fn with_name(name: FullIdentifier) -> Self {
         FunctionBuilder {
             in_progress: Function {
                 identifier: name,
                 parameters: vec![],
                 ret_type: Option::None,
-                instructions: vec![]
+                instructions: vec![],
             },
             set_parameters: false,
-            set_instructions: false
+            set_instructions: false,
         }
     }
 
@@ -69,7 +65,10 @@ impl FunctionBuilder {
 
     pub fn with_instructions(mut self, instructions: Vec<Instruction>) -> Self {
         if self.set_instructions {
-            panic!("Instructions for {} already set", self.in_progress.identifier);
+            panic!(
+                "Instructions for {} already set",
+                self.in_progress.identifier
+            );
         }
         self.in_progress.instructions = instructions;
         self.set_instructions = true;
@@ -78,7 +77,10 @@ impl FunctionBuilder {
 
     pub fn build(self) -> Function {
         if !(self.set_instructions && self.set_parameters) {
-            panic!("Trying to build unfinished function {}", self.in_progress.identifier);
+            panic!(
+                "Trying to build unfinished function {}",
+                self.in_progress.identifier
+            );
         }
 
         self.in_progress
@@ -98,12 +100,10 @@ mod test {
 
     #[test]
     fn can_build() {
-
-        let function =
-            FunctionBuilder::with_name(FullIdentifier::from("get"))
-                .no_parameters()
-                .with_instructions(vec![])
-                .build();
+        let function = FunctionBuilder::with_name(FullIdentifier::from("get"))
+            .no_parameters()
+            .with_instructions(vec![])
+            .build();
 
         assert_eq!(format!("{}", function.get_identifier()), "get");
     }
@@ -116,6 +116,3 @@ mod test {
             .build();
     }
 }
-
-
-

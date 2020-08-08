@@ -3,11 +3,11 @@ use std::convert::TryFrom;
 
 use Immediate::*;
 
-use crate::vm::{Fault, POINTER_SIZE};
-use byteorder::{BigEndian, ByteOrder};
+use crate::resolution::functions::Function;
 use crate::resolution::types::TypeDescriptor;
 use crate::resolution::types::Variant;
-use crate::resolution::functions::Function;
+use crate::vm::{Fault, POINTER_SIZE};
+use byteorder::{BigEndian, ByteOrder};
 
 #[derive(Debug, Clone)]
 pub enum Immediate {
@@ -28,9 +28,9 @@ pub enum Immediate {
     /// Represents the internal char type
     Char(char),
     /// A mutable pointer to another immediate
-    Pointer(* mut Immediate),
+    Pointer(*mut Immediate),
     /// An immutable pointer to another immediate
-    PointerConst(* const Immediate),
+    PointerConst(*const Immediate),
     /// An array of the same type of Immediate
     ///
     /// # Safety
@@ -41,7 +41,7 @@ pub enum Immediate {
     Variant(Variant),
     /// A type with more information stored in it
     DetailedType(TypeDescriptor),
-    Function(Function)
+    Function(Function),
 }
 
 macro_rules! into_other_primitive {
@@ -212,7 +212,7 @@ impl Immediate {
             U16(d) => d >> 15 > 0,
             U32(d) => d >> 31 > 0,
             U64(d) => d >> 63 > 0,
-            USize(d) => d >> (if POINTER_SIZE == 4 { 31 } else { 63}) > 0,
+            USize(d) => d >> (if POINTER_SIZE == 4 { 31 } else { 63 }) > 0,
             Char(d) => *d as u8 >> 7 > 0,
             _ => {
                 panic!("{:?}", Fault::PrimitiveTypeMismatch);
@@ -257,15 +257,15 @@ impl From<Immediate> for Vec<u8> {
             U16(d) => {
                 vec = vec![0; 2];
                 BigEndian::write_u16(&mut *vec, d);
-            },
+            }
             U32(d) => {
                 vec = vec![0; 4];
                 BigEndian::write_u32(&mut *vec, d);
-            },
-            U64(d) =>{
+            }
+            U64(d) => {
                 vec = vec![0; 8];
                 BigEndian::write_u64(&mut *vec, d);
-            },
+            }
             _ => {
                 panic!("{:?}", Fault::PrimitiveTypeMismatch);
             }
@@ -332,7 +332,6 @@ impl From<&mut Immediate> for Immediate {
         Pointer(d)
     }
 }
-
 
 impl TryFrom<Immediate> for u8 {
     type Error = Fault;
@@ -420,10 +419,8 @@ impl TryFrom<Immediate> for char {
 
 pub type ImmediateResult = Result<Immediate, Fault>;
 
-
 impl From<bool> for Immediate {
     fn from(b: bool) -> Self {
         Immediate::bool_equivalent(b)
     }
 }
-

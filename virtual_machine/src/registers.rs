@@ -10,15 +10,26 @@ pub struct Registers {
 impl Registers {
     pub fn new() -> Self {
         Registers {
-            caller:
-            [Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0)],
-            callee: [Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0),
-                Immediate::USize(0), Immediate::USize(0)],
+            caller: [
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+            ],
+            callee: [
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+                Immediate::USize(0),
+            ],
         }
     }
 }
