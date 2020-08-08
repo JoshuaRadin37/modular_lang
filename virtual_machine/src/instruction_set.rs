@@ -1,16 +1,16 @@
+use std::cmp::Ordering;
+use std::ops::{Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Rem, Sub};
+use std::string::String;
+
+pub use immediate::*;
+
 use crate::flags::Flags;
 use crate::instruction_set::Immediate::*;
-use crate::vm::{Fault, VirtualMachine, POINTER_SIZE};
-use byteorder::{BigEndian, ByteOrder};
-use std::cmp::Ordering;
-use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub, Deref};
+use crate::memory::Scope;
+use crate::vm::{Fault, POINTER_SIZE, VirtualMachine};
+use crate::vm::Fault::InvalidRegister;
 
 mod immediate;
-pub use immediate::*;
-use std::string::String;
-use crate::memory::Scope;
-use crate::vm::Fault::{SegmentationFault, InvalidRegister};
-
 pub mod arithmetic;
 
 #[derive(Debug, Copy, Clone)]
@@ -228,7 +228,7 @@ impl Literal {
             (PointerConst(dest), Pointer(src)) => {
                 *dest = src.clone();
             },
-            (Structure(dest), Structure(src)) => {
+            (DetailedType(dest), DetailedType(src)) => {
                 *dest = src.clone();
             },
             _ => {
@@ -254,11 +254,10 @@ impl ZeroComparable for Immediate {
             Float(_) => 0.0f32.into(),
             Double(_) => 0.0f64.into(),
             Char(_) => 0u8.into(),
-            Pointer(_) => return None,
+            Pointer(_) => 0usize.into(),
             USize(_) => 0usize.into(),
-            PointerConst(_) => return None,
-            Array(_) => return None,
-            Structure(_) => return None,
+            PointerConst(_) => 0usize.into(),
+            _ => return None,
         };
         self.partial_cmp(&zero)
     }
@@ -274,11 +273,10 @@ impl ZeroComparable for Signed {
             Float(_) => 0.0f32.into(),
             Double(_) => 0.0f64.into(),
             Char(_) => 0i8.into(),
-            Pointer(_) => return None,
+            Pointer(_) => 0isize.into(),
             USize(_) => 0isize.into(),
-            PointerConst(_) => return None,
-            Array(_) => return None,
-            Structure(_) => return None,
+            PointerConst(_) => 0isize.into(),
+            _ => return None,
         };
         self.partial_cmp(&zero)
     }
@@ -359,6 +357,7 @@ pub enum Instruction {
     GetVar(String),
     SaveVar(String),
     Coerce { dest_type: Immediate },
+    CallFunction(Immediate),
     Enter,
     Lower,
     Exit

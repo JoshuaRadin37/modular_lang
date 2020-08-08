@@ -1,26 +1,47 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use Immediate::*;
 
 use crate::vm::{Fault, POINTER_SIZE};
 use byteorder::{BigEndian, ByteOrder};
+use crate::resolution::types::TypeDescriptor;
+use crate::resolution::types::Variant;
+use crate::resolution::functions::Function;
 
 #[derive(Debug, Clone)]
 pub enum Immediate {
+    /// Represents the internal U8 type
     U8(u8),
+    /// Represents the internal U16 type
     U16(u16),
+    /// Represents the internal U32 type
     U32(u32),
+    /// Represents the internal U64 type
     U64(u64),
+    /// Represents the internal USize type
     USize(usize),
+    /// Represents the internal f32 type
     Float(f32),
+    /// Represents the internal f64 type
     Double(f64),
+    /// Represents the internal char type
     Char(char),
+    /// A mutable pointer to another immediate
     Pointer(* mut Immediate),
+    /// An immutable pointer to another immediate
     PointerConst(* const Immediate),
+    /// An array of the same type of Immediate
+    ///
+    /// # Safety
+    ///
+    /// These immediates should all be of the same type
     Array(Vec<Immediate>),
-    Structure(HashMap<String, Immediate>)
+    /// Either a structure, a tuple, or an empty
+    Variant(Variant),
+    /// A type with more information stored in it
+    DetailedType(TypeDescriptor),
+    Function(Function)
 }
 
 macro_rules! into_other_primitive {

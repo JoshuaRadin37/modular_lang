@@ -1,12 +1,9 @@
-use std::cell::{UnsafeCell, RefCell, Cell};
-use std::iter::Iterator;
-use std::ops::Range;
 use std::collections::{HashMap, HashSet};
-use crate::instruction_set::Immediate;
-use std::error::Error;
-use std::fmt::{Display, Formatter};
-use crate::vm::Fault::{SegmentationFault, NotAVariable};
+use std::iter::Iterator;
 use std::sync::{Arc, RwLock};
+
+use crate::instruction_set::Immediate;
+use crate::vm::Fault::{NotAVariable, SegmentationFault};
 use crate::vm::Fault;
 
 pub const MAX_MEM: usize = std::usize::MAX;

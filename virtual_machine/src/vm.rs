@@ -1,14 +1,12 @@
-use crate::flags::Flags;
-use crate::instruction_set::Immediate::{Double, Float, U16, U32, U64, U8};
-use crate::instruction_set::{Immediate, Instruction, JumpType, Literal, RegisterType};
-use crate::memory::Memory;
-use crate::registers::{Registers, REGISTER_COUNT};
-use crate::vm::Fault::{InvalidReturn, PrimitiveTypeMismatch, SegmentationFault};
-use byteorder::{BigEndian, ByteOrder};
-use std::cmp::Ordering;
-use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+
+use crate::flags::Flags;
+use crate::instruction_set::{Immediate, Instruction, JumpType, Literal, RegisterType};
+use crate::instruction_set::Immediate::{Double, Float, U16, U32, U64, U8};
+use crate::memory::Memory;
+use crate::registers::Registers;
+use crate::vm::Fault::{PrimitiveTypeMismatch, SegmentationFault};
 
 pub struct VirtualMachine {
     instructions: Vec<Instruction>,
@@ -221,6 +219,22 @@ impl VirtualMachine {
                     Immediate::Char(_) => {
                         src.into_char()
                     },
+                    Immediate::Pointer(_) => {
+                        if let Immediate::Pointer(_) = &src {
+                            src
+                        } else {
+                            return Err(PrimitiveTypeMismatch)
+                        }
+                    },
+                    Immediate::PointerConst(_) => {
+                        if let Immediate::Pointer(_) = &src {
+                            src
+                        } else if let Immediate::PointerConst(_) = &src {
+                            src
+                        } else {
+                            return Err(PrimitiveTypeMismatch)
+                        }
+                    }
                     _ => {
                         return Err(PrimitiveTypeMismatch)
                     }
@@ -235,6 +249,9 @@ impl VirtualMachine {
             }
             Instruction::Exit => {
                 self.memory.exit_local_scope();
+            }
+            Instruction::CallFunction(_) => {
+                unimplemented!()
             }
         }
         self.program_counter = next_program_counter;
