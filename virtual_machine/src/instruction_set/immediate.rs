@@ -4,10 +4,10 @@ use std::convert::TryFrom;
 use Immediate::*;
 
 use crate::resolution::functions::Function;
-use crate::resolution::types::TypeDescriptor;
-use crate::resolution::types::Variant;
+use crate::resolution::types::descriptor::Variant;
 use crate::vm::{Fault, POINTER_SIZE};
 use byteorder::{BigEndian, ByteOrder};
+use crate::resolution::types::TypedObject;
 
 #[derive(Debug, Clone)]
 pub enum Immediate {
@@ -36,11 +36,11 @@ pub enum Immediate {
     /// # Safety
     ///
     /// These immediates should all be of the same type
-    Array(Vec<Immediate>),
+    Array(Vec<Option<Immediate>>),
     /// Either a structure, a tuple, or an empty
     Variant(Variant),
     /// A type with more information stored in it
-    DetailedType(TypeDescriptor),
+    DetailedType(TypedObject),
     Function(Function),
 }
 
@@ -183,13 +183,15 @@ impl Immediate {
         }
     }
     pub fn is_zero(&self) -> bool {
+        #[allow(clippy::float_cmp)]
         match self {
             U8(d) => d == &0,
             U16(d) => d == &0,
             U32(d) => d == &0,
             U64(d) => d == &0,
             USize(d) => d == &0,
-            Float(d) => d == &0.0,
+
+            Float(d) => d == &0.0 ,
             Double(d) => d == &0.0,
             Char(d) => d == &'\0',
             Pointer(d) => d.is_null(),
@@ -245,6 +247,18 @@ impl Immediate {
             }
         }
         count
+    }
+
+    pub fn can_copy(&self) -> bool {
+        match self {
+            Array(_) => false,
+            Variant(_) => false,
+            DetailedType(details) => {
+                unimplemented!()
+            },
+            Function(_) => false,
+            _ => true
+        }
     }
 }
 

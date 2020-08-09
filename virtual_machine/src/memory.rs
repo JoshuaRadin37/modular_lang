@@ -36,6 +36,7 @@ pub struct Memory {
     memory: Vec<Option<Immediate>>,
     free_list: Vec<usize>,
     local_scope_stack: Vec<Variables>,
+    heap: Vec<Box<Immediate>>
 }
 
 impl Memory {
@@ -45,6 +46,7 @@ impl Memory {
             memory: vec![],
             free_list: vec![],
             local_scope_stack: vec![Variables::new()],
+            heap: Vec::new()
         }
     }
 
@@ -210,6 +212,13 @@ impl Memory {
                 }
             }
         }
+    }
+
+    pub fn heapify(&mut self, imm: Immediate) -> * mut Immediate {
+        let mut boxed = Box::new(imm);
+        let ptr = &mut *boxed as *mut Immediate;
+        self.heap.push(boxed);
+        ptr
     }
 
     pub fn collect_garbage(&mut self) {

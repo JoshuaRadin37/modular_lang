@@ -7,6 +7,9 @@ use crate::instruction_set::{Immediate, Instruction, JumpType, Literal, Register
 use crate::memory::Memory;
 use crate::registers::Registers;
 use crate::vm::Fault::{PrimitiveTypeMismatch, SegmentationFault};
+use crate::resolution::types::descriptor::Variant;
+use std::collections::HashMap;
+use crate::resolution::Identifier;
 
 pub struct VirtualMachine {
     instructions: Vec<Instruction>,
@@ -29,6 +32,7 @@ pub enum Fault {
     InvalidMemorySize,
     InvalidAddressOfLocation(Literal),
     NotAVariable(String),
+    TypeMismatch
 }
 
 impl Display for Fault {
@@ -224,6 +228,60 @@ impl VirtualMachine {
                 self.memory.exit_local_scope();
             }
             Instruction::CallFunction(_) => unimplemented!(),
+            Instruction::GetField(field_name) => {
+                if let Immediate::Variant(
+                    Variant::Structure {
+                                              order: _, fields
+                                          }
+                ) = self.pop()? {
+                    self.push(fields.get(field_name).ok_or(SegmentationFault)?.clone())
+                } else {
+                    return Err(SegmentationFault);
+                }
+            },
+            Instruction::GetMember(field_num) => {
+                if let Immediate::Variant(
+                    Variant::Tuple(vec)
+                ) = self.pop()? {
+                    self.push(vec.get(*field_num).ok_or(SegmentationFault)?.clone())
+                } else {
+                    return Err(SegmentationFault);
+                }
+            }
+            Instruction::BuildVariant { dest_variant: dest } => {
+                let output: Variant = match dest {
+                    Variant::Tuple(ins) => {
+                        let mut fields: Vec<Immediate> = vec![];
+                        for _ in 0..ins.len() {
+                            fields.insert(0, self.pop()?)
+                        }
+
+                        Variant::Tuple(fields)
+                    },
+                    Variant::Structure { order, ..} => {
+                        let mut mapping: HashMap<Identifier, Immediate> = HashMap::new();
+
+                        for identifier in order.iter().rev() {
+                            let imm = self.pop()?;
+                            mapping.insert(identifier.clone(), imm);
+                        }
+
+                        Variant::Structure {
+                            order: order.clone(),
+                            fields: mapping
+                        }
+                    },
+                    Variant::Empty => {
+                        Variant::Empty
+                    },
+                };
+                self.push(Immediate::Variant(output));
+            }
+            Instruction::Heapify => {
+                let imm = self.pop()?;
+                let pointer = self.memory.heapify(imm);
+                self.push(Immediate::Pointer(pointer));
+            }
         }
         self.program_counter = next_program_counter;
         Ok(())
