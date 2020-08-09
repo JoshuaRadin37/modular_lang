@@ -6,13 +6,13 @@ pub use immediate::*;
 
 use crate::flags::Flags;
 use crate::instruction_set::Immediate::*;
+use crate::intrinsics::known_types::MARKER_TRAITS;
 use crate::memory::Scope;
-use crate::resolution::{FullIdentifier, Identifier, Resolvable};
 use crate::resolution::functions::Function;
 use crate::resolution::types::descriptor::Variant;
-use crate::vm::{Fault, POINTER_SIZE, VirtualMachine};
+use crate::resolution::{Resolvable, FullIdentifier};
 use crate::vm::Fault::{InvalidRegister, TypeMismatch};
-use crate::intrinsics::known_types::MARKER_TRAITS;
+use crate::vm::{Fault, VirtualMachine, POINTER_SIZE};
 
 pub mod arithmetic;
 mod immediate;
@@ -85,12 +85,12 @@ pub enum RegisterType {
 pub enum Literal {
     /// The actual variable itself
     Variable(String),
-    /// A member of a variant. This should not result in any `clones()`
-    Member(FullIdentifier),
     /// A register
     Register(RegisterType, u8),
     /// An immutable value
     Immediate(Immediate),
+    /// pop the top of the stack
+    Peak,
 }
 
 impl Literal {
@@ -124,10 +124,7 @@ impl Literal {
                     .ok_or(InvalidRegister),
             },
             Literal::Immediate(im) => Ok(im.clone()),
-            Literal::Member(member) => {
-                // should return a pointer
-                unimplemented!()
-            }
+            Literal::Peak => virtual_machine.peak().map(|imm| imm.clone()),
         }
     }
 
@@ -150,6 +147,7 @@ impl Literal {
                     .ok_or(InvalidRegister),
             },
             Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
+            Literal::Peak => virtual_machine.peak(),
         }
     }
 
@@ -172,6 +170,7 @@ impl Literal {
                     .ok_or(InvalidRegister),
             },
             Literal::Immediate(_) => Err(Fault::InvalidAddressOfLocation(self.clone())),
+            Literal::Peak => virtual_machine.peak_mut(),
         }
     }
 
@@ -194,6 +193,7 @@ impl Literal {
                     .ok_or(InvalidRegister),
             },
             Literal::Immediate(im) => Ok(im),
+            Literal::Peak => virtual_machine.peak_mut(),
         }
     }
 
@@ -242,14 +242,20 @@ impl Literal {
                 *dest = src.clone();
             }
             (DetailedType(dest), DetailedType(src)) => {
-                if !src.get_descriptor().is_instance_of(dest.get_descriptor().get_identifier()) {
-                    return Err(TypeMismatch)
+                if !src
+                    .get_descriptor()
+                    .is_instance_of(dest.get_descriptor().get_identifier())
+                {
+                    return Err(TypeMismatch);
                 }
 
-                if dest.get_descriptor().implements_trait(&MARKER_TRAITS[&"copy_trait".to_string()]) {
+                if dest
+                    .get_descriptor()
+                    .implements_trait(&MARKER_TRAITS[&"copy_trait".to_string()])
+                {
                     *dest = src.clone();
                 } else {
-                    return Err(TypeMismatch)
+                    return Err(TypeMismatch);
                 }
             }
             _ => {
@@ -379,14 +385,14 @@ pub enum Instruction {
         dest_type: Immediate,
     },
     CallFunction(Function),
-    GetField(Identifier),
-    GetMember(usize),
+    GetField(Literal, FullIdentifier),
+    GetMember(Literal, usize),
     /// Builds variants bottom up based on the variant in the destination type
     BuildVariant {
-        dest_variant: Variant
+        dest_variant: Variant,
     },
     Enter,
     Lower,
     Exit,
-    Heapify
+    Heapify,
 }

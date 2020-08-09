@@ -63,6 +63,53 @@ impl FullIdentifier {
             FullIdentifier::Namespaced(_, lower) => lower.get_name(),
         }
     }
+
+    pub fn is_sub_identifier_of(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FullIdentifier::Name(name), FullIdentifier::Name(other_name)) => name == other_name,
+            (FullIdentifier::Namespaced(..), FullIdentifier::Name(_)) => false,
+            (FullIdentifier::Name(name), FullIdentifier::Namespaced(current, _)) => name == current,
+            (
+                FullIdentifier::Namespaced(name, self_next),
+                FullIdentifier::Namespaced(other_name, other_next),
+            ) => {
+                if name == other_name {
+                    self_next.is_sub_identifier_of(other_next)
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    pub fn other_is_sub_identifier(&self, other: &Self) -> bool {
+        other.is_sub_identifier_of(self)
+    }
+
+    pub fn remove(self, other: &Self) -> Result<Option<Self>, ()> {
+        if !other.is_sub_identifier_of(&self) {
+            return Err(());
+        }
+
+        if &self == other {
+            return Ok(None);
+        }
+
+        let mut self_iter = IntoIterator::into_iter(self);
+        let mut other_iter = IntoIterator::into_iter(other);
+
+        while let Some(other) =  other_iter.next()  {
+            if let Some(this) = self_iter.next() {
+                if & this != other {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(Some(FromIterator::from_iter(self_iter)))
+    }
 }
 
 impl FromIterator<Identifier> for FullIdentifier {
@@ -82,6 +129,14 @@ impl<S: AsRef<str>> FromIterator<S> for FullIdentifier {
         let id_iter = iter.into_iter().map(|s: S| Identifier::from(s.as_ref()));
         FullIdentifier::from_iter(id_iter)
     }
+}
+
+#[macro_export]
+macro_rules! identifier {
+    ($($identifier:ident)::+) => {
+        $crate::resolution::FullIdentifier::from_iter(vec![$(stringify!($identifier)),*])
+    };
+
 }
 
 pub struct IdentifierIter(Option<FullIdentifier>);
@@ -224,5 +279,32 @@ mod test {
             FullIdentifier::Namespaced(Identifier::from("modular"), Box::new(namespaced));
         let namespaced_str = format!("{}", triple_namespaced);
         assert_eq!(&*namespaced_str, "modular::std::Object");
+    }
+
+    #[test]
+    fn identifier_equality() {
+        let vec1= identifier!(std::Object);
+        let vec2 = identifier!(std::Object);
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn is_sub_identifier() {
+        let long = identifier!(std::Object::hash_code);
+        let short = identifier!(std::Object);
+        assert!(short.is_sub_identifier_of(&long));
+        assert!(long.other_is_sub_identifier(&short));
+        assert!(!long.is_sub_identifier_of(&short));
+    }
+
+    #[test]
+    fn get_pos_sub_identifier() {
+        let long = identifier!(std::Object::hash_code);
+        let short = identifier!(std::Object);
+
+        assert_eq!(long.clone().remove(&short), Ok(Some(identifier!(hash_code))));
+        assert_eq!(long.clone().remove(&long), Ok(None));
+        assert_eq!(short.remove(&long), Err(()));
+
     }
 }

@@ -1,15 +1,15 @@
 use std::collections::HashMap;
-use std::sync::{Weak, Arc};
+use std::sync::{Arc, Weak};
 
 use crate::instruction_set::Immediate;
-use crate::resolution::{FullIdentifier, Identifier, Resolvable};
 use crate::resolution::functions::Function;
+use crate::resolution::{FullIdentifier, Identifier, Resolvable};
 
 #[derive(Debug)]
 pub enum StorageType {
     Variants(HashMap<Identifier, Variant>),
     Single(Variant),
-    None
+    None,
 }
 
 #[derive(Debug)]
@@ -26,12 +26,11 @@ pub struct TypeDescriptor {
 }
 
 impl TypeDescriptor {
-
     pub fn implements_trait(&self, name: &FullIdentifier) -> bool {
         if self.is_trait && self.get_identifier() == name {
             return true;
         }
-        for parent in self.parents {
+        for parent in &self.parents {
             let strong: Arc<TypeDescriptor> = parent.upgrade().unwrap();
 
             if strong.implements_trait(name) {
@@ -47,7 +46,7 @@ impl TypeDescriptor {
             return true;
         }
 
-        for parent in self.parents {
+        for parent in &self.parents {
             let strong: Arc<TypeDescriptor> = parent.upgrade().unwrap();
 
             if strong.is_instance_of(name) {
@@ -59,7 +58,6 @@ impl TypeDescriptor {
     }
 }
 
-
 impl Resolvable for TypeDescriptor {
     fn get_identifier(&self) -> &FullIdentifier {
         &self.identifier
@@ -69,7 +67,10 @@ impl Resolvable for TypeDescriptor {
 #[derive(Clone, Debug)]
 pub enum Variant {
     Tuple(Vec<Immediate>),
-    Structure { order: Vec<Identifier>, fields: HashMap<Identifier, Immediate> },
+    Structure {
+        order: Vec<Identifier>,
+        fields: HashMap<Identifier, Immediate>,
+    },
     Empty,
 }
 
@@ -78,4 +79,3 @@ pub enum MemberFunction {
     Unowned,
     Super(FullIdentifier),
 }
-

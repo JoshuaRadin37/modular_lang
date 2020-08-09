@@ -5,9 +5,9 @@ use Immediate::*;
 
 use crate::resolution::functions::Function;
 use crate::resolution::types::descriptor::Variant;
+use crate::resolution::types::TypedObject;
 use crate::vm::{Fault, POINTER_SIZE};
 use byteorder::{BigEndian, ByteOrder};
-use crate::resolution::types::TypedObject;
 
 #[derive(Debug, Clone)]
 pub enum Immediate {
@@ -191,7 +191,7 @@ impl Immediate {
             U64(d) => d == &0,
             USize(d) => d == &0,
 
-            Float(d) => d == &0.0 ,
+            Float(d) => d == &0.0,
             Double(d) => d == &0.0,
             Char(d) => d == &'\0',
             Pointer(d) => d.is_null(),
@@ -253,11 +253,9 @@ impl Immediate {
         match self {
             Array(_) => false,
             Variant(_) => false,
-            DetailedType(details) => {
-                unimplemented!()
-            },
+            DetailedType(details) => unimplemented!(),
             Function(_) => false,
-            _ => true
+            _ => true,
         }
     }
 }
