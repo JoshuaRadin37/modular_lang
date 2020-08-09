@@ -229,7 +229,25 @@ impl VirtualMachine {
         Ok(())
     }
 
-    pub fn execute(instructions: Vec<Instruction>, start: usize) -> Result<u32, Fault> {
+    pub fn execute(&mut self, instructions: Vec<Instruction>, start: usize) -> Result<u32, Fault> {
+        self.flags.reset();
+        self.program_counter = start;
+        self.instructions = instructions;
+        while self.cont {
+            let instruction = self
+                .instructions
+                .get(self.program_counter)
+                .ok_or_else(|| SegmentationFault)?
+                .clone();
+            self.run_instruction(&instruction)?;
+        }
+        match self.pop()? {
+            U32(exit) => Ok(exit),
+            _ => Err(Fault::PrimitiveTypeMismatch),
+        }
+    }
+
+    pub fn headless_execute(instructions: Vec<Instruction>, start: usize) -> Result<u32, Fault> {
         let mut vm = VirtualMachine::new();
         vm.program_counter = start;
         vm.instructions = instructions;

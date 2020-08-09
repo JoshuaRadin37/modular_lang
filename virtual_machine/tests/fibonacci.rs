@@ -72,7 +72,7 @@ fn fib_test() {
             Halt,
         ];
 
-        let result = VirtualMachine::execute(instructions, 46 - 13);
+        let result = VirtualMachine::headless_execute(instructions, 46 - 13);
         println!("Result = {:?}", result);
         assert_eq!(result.unwrap(), fib(n));
     }
